@@ -5,7 +5,7 @@ struct ContentView: View {
     @State private var showingAddSheet = false
     @State private var medicationToDelete: Medication?
     @State private var showingDeleteAlert = false
-
+    
     var body: some View {
         NavigationStack {
             if medications.isEmpty {
@@ -19,15 +19,22 @@ struct ContentView: View {
                     }
             } else {
                 List {
-                    ForEach(medications) { medication in
-                        MedicationRow(medication: medication)
+                    ForEach($medications.indices, id: \.self) { index in
+                        MedicationRow(medication: $medications[index])
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    medicationToDelete = medication
+                                    medicationToDelete = medications[index]
                                     showingDeleteAlert = true
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
+                            }
+                            .onTapGesture {
+                                medications[index].taken.toggle()
+                                if medications[index].taken {
+                                    medications[index].lastSevenDays[0] = true
+                                }
+                                MedicationStorage.shared.saveMedications(medications)
                             }
                     }
                 }
@@ -46,7 +53,6 @@ struct ContentView: View {
             Button("Delete", role: .destructive) {
                 if let medicationToDelete = medicationToDelete,
                    let index = medications.firstIndex(where: { $0.id == medicationToDelete.id }) {
-                    // Move the notification cancellation to the main thread
                     DispatchQueue.main.async {
                         NotificationManager.shared.cancelNotification(for: medicationToDelete)
                     }
@@ -90,16 +96,24 @@ struct EmptyStateView: View {
     }
 }
 
-// Medication row for the list
+// Medication row with image
 struct MedicationRow: View {
-    let medication: Medication
+    @State private var showDetail = false
+    @Binding var medication: Medication
     
     var body: some View {
         HStack {
+            if let imageData = medication.imageData, let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 50, height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            
             VStack(alignment: .leading, spacing: 8) {
                 Text(medication.name)
                     .font(.title3)
-                    .foregroundColor(.primary)
                 
                 HStack {
                     Image(systemName: "clock.fill")
@@ -108,14 +122,31 @@ struct MedicationRow: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
+                
+                if !medication.instructions.isEmpty {
+                    Text(medication.instructions)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
+            
             Spacer()
             
-            Image(systemName: "chevron.right")
-                .foregroundColor(.gray)
-                .font(.system(size: 14, weight: .semibold))
+            Circle()
+                .fill(medication.taken ? Color.green : Color.gray.opacity(0.3))
+                .frame(width: 20, height: 20)
+                .overlay(
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.white)
+                        .opacity(medication.taken ? 1 : 0)
+                )
         }
         .padding(.vertical, 8)
-        .contentShape(Rectangle())
+        .onTapGesture {
+            showDetail = true
+        }
+        .sheet(isPresented: $showDetail) {
+            MedicationDetailView(medication: $medication)
+        }
     }
 }
