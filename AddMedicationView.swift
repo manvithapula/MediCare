@@ -7,22 +7,35 @@ struct AddMedicationView: View {
     
     @State private var medicineName = ""
     @State private var medicineTime = Date()
-    @State private var instructions = ""
+    @State private var startDate = Date()
+    @State private var endDate = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     
+    @State private var instructions = ""
     @State private var selectedImage: UIImage?
     @State private var showImagePicker = false
     @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
-    
+    @State private var frequency: Frequency = .daily  // Default: Daily
+
     var body: some View {
         NavigationView {
             Form {
                 TextField("Medicine Name", text: $medicineName)
                     .font(.title3)
+
+                Section(header: Text("Medication Schedule")) {
+                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
+                    DatePicker("End Date", selection: $endDate, in: startDate..., displayedComponents: .date)
+                    DatePicker("Time to Take", selection: $medicineTime, displayedComponents: .hourAndMinute)
+                }
                 
-                DatePicker("Time to Take",
-                          selection: $medicineTime,
-                          displayedComponents: .hourAndMinute)
-                    .font(.title3)
+                Section(header: Text("Frequency")) {
+                    Picker("How Often?", selection: $frequency) {
+                        ForEach(Frequency.allCases, id: \.self) { freq in
+                            Text(freq.rawValue).tag(freq)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
                 
                 Section(header: Text("Instructions")) {
                     TextEditor(text: $instructions)
@@ -70,13 +83,16 @@ struct AddMedicationView: View {
     }
     
     private func saveMedication() {
-        let imageData = selectedImage?.jpegData(compressionQuality: 0.8) // Convert UIImage to Data
+        let imageData = selectedImage?.jpegData(compressionQuality: 0.8)
 
         let medication = Medication(
             name: medicineName,
             timeToTake: medicineTime,
             instructions: instructions,
-            imageData: imageData // Store image data
+            imageData: imageData,
+            startDate: startDate,
+            endDate: endDate,
+            frequency: frequency
         )
         medications.append(medication)
         MedicationStorage.shared.saveMedications(medications)
