@@ -46,6 +46,16 @@ struct AddMedicationView: View {
         let medication = Medication(name: medicineName, timeToTake: medicineTime)
         medications.append(medication)
         MedicationStorage.shared.saveMedications(medications)
-        dismiss()
-    }
+    Task {
+           let granted = await NotificationManager.shared.requestAuthorization()
+           if granted {
+               let scheduled = await NotificationManager.shared.scheduleNotification(for: medication)
+               if !scheduled {
+                   print("Failed to schedule notification")
+               }
+           }
+       }
+       
+       dismiss()
+   }
 }

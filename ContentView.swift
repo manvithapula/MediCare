@@ -5,11 +5,18 @@ struct ContentView: View {
     @State private var showingAddSheet = false
     @State private var medicationToDelete: Medication?
     @State private var showingDeleteAlert = false
-    
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             if medications.isEmpty {
                 EmptyStateView()
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button(action: { showingAddSheet = true }) {
+                                Label("Add Medicine", systemImage: "plus.circle.fill")
+                            }
+                        }
+                    }
             } else {
                 List {
                     ForEach(medications) { medication in
@@ -25,29 +32,34 @@ struct ContentView: View {
                     }
                 }
                 .navigationTitle("My Medicines")
-                .font(.title2)
                 .toolbar {
-                    Button(action: { showingAddSheet = true }) {
-                        Label("Add Medicine", systemImage: "plus.circle.fill")
-                            .font(.title2)
-                    }
-                }
-                .alert("Delete Medicine?", isPresented: $showingDeleteAlert) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Delete", role: .destructive) {
-                        if let medicationToDelete = medicationToDelete,
-                           let index = medications.firstIndex(where: { $0.id == medicationToDelete.id }) {
-                            withAnimation {
-                                medications.remove(at: index)
-                                MedicationStorage.shared.saveMedications(medications)
-                            }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: { showingAddSheet = true }) {
+                            Label("Add Medicine", systemImage: "plus.circle.fill")
                         }
                     }
-                } message: {
-                    if let medication = medicationToDelete {
-                        Text("Are you sure you want to delete \(medication.name)?")
+                }
+            }
+        }
+        .alert("Delete Medicine?", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                if let medicationToDelete = medicationToDelete,
+                   let index = medications.firstIndex(where: { $0.id == medicationToDelete.id }) {
+                    // Move the notification cancellation to the main thread
+                    DispatchQueue.main.async {
+                        NotificationManager.shared.cancelNotification(for: medicationToDelete)
+                    }
+                    
+                    withAnimation {
+                        medications.remove(at: index)
+                        MedicationStorage.shared.saveMedications(medications)
                     }
                 }
+            }
+        } message: {
+            if let medication = medicationToDelete {
+                Text("Are you sure you want to delete \(medication.name)?")
             }
         }
         .sheet(isPresented: $showingAddSheet) {
@@ -56,7 +68,7 @@ struct ContentView: View {
     }
 }
 
-// Empty state view when no medications are added
+// no medications are added
 struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 20) {
@@ -78,6 +90,7 @@ struct EmptyStateView: View {
     }
 }
 
+// Medication row for the list
 struct MedicationRow: View {
     let medication: Medication
     

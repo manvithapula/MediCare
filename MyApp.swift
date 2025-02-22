@@ -9,7 +9,10 @@ struct MyApp: App {
                     .tabItem {
                         Label("Medicines", systemImage: "pills.fill")
                     }
+                
             }
         }
     }
+    
 }
+
