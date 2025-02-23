@@ -3,105 +3,249 @@ import SwiftUI
 struct MedicationDetailView: View {
     @Binding var medication: Medication
     @Environment(\.dismiss) var dismiss
+    @State private var isEditing = false
+    
+    // Edit mode state
+    @State private var editedName = ""
+    @State private var editedTime = Date()
+    @State private var editedStartDate = Date()
+    @State private var editedEndDate = Date()
+    @State private var editedInstructions = ""
+    @State private var editedFrequency: Frequency = .justOnce
+    @State private var editedImage: UIImage?
+    
+    @State private var showImagePicker = false
+    @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var showAlert = false
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Medication Image
-                if let imageData = medication.imageData, let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: 280)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(radius: 5)
-                        .padding(.horizontal)
+        NavigationStack {
+            List {
+                if !isEditing {
+                    statusSection
                 }
                 
-                // Medication Information Card
-                VStack(spacing: 20) {
-                    // Medication Name
-                    Text(medication.name)
-                        .font(.system(size: 28, weight: .bold))
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(.primary)
-                        .padding(.top, 5)
-                    
-                    // Time Section
-                    VStack(spacing: 8) {
-                        Text("Time to Take")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        
-                        HStack(spacing: 12) {
-                            Image(systemName: "clock.fill")
-                                .font(.system(size: 24))
-                                .foregroundColor(.blue)
-                            Text(medication.formattedTime)
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(.primary)
-                        }
+                imageSection
+                
+                if isEditing {
+                    editDetailsSection
+                } else {
+                    displayDetailsSection
+                }
+            }
+            .navigationTitle(isEditing ? "Edit Medicine" : "Medicine Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(isEditing ? "Cancel" : "Done") {
+                        isEditing ? cancelEdit() : dismiss()
                     }
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(15)
                 }
-                .padding(.horizontal)
                 
-                // Instructions Section
-                if !medication.instructions.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Instructions")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        Text(medication.instructions)
-                            .font(.system(size: 18))
-                            .lineSpacing(4)
-                            .padding(16)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(15)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(isEditing ? "Save" : "Edit") {
+                        isEditing ? saveChanges() : startEditing()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
+                }
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(image: $editedImage, sourceType: sourceType)
+            }
+            .alert("Error", isPresented: $showAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Medicine name cannot be empty")
+            }
+            .onAppear {
+                initializeEditValues()
+            }
+        }
+    }
+    
+
+    private var statusSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Status: ")
+                    Text(medication.taken ? "Taken" : "Not Taken")
+                        .foregroundColor(medication.taken ? .green : .red)
+                        .fontWeight(.bold)
+                    if medication.taken {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    }
                 }
                 
-                Spacer(minLength: 30)
-                
-                // Action Button
-                Button(action: {
-                    medication.taken.toggle()
-                    
+                Button {
                     Task {
-                        await MedicationStorage.shared.saveMedications([medication])
-                        
+                        medication.taken.toggle()
                         if medication.taken {
                             await MedicationStorage.shared.saveMedicationHistory(medication, takenDate: Date())
                         }
+                        await MedicationStorage.shared.saveMedications([medication])
                     }
-                    
-                    dismiss()
-                }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: medication.taken ? "checkmark.circle.fill" : "plus.circle.fill")
-                            .font(.system(size: 24))
-                        Text(medication.taken ? "Marked as Taken" : "Mark as Taken")
-                            .font(.system(size: 20, weight: .bold))
+                } label: {
+                    HStack {
+                        Image(systemName: medication.taken ? "arrow.uturn.backward.circle.fill" : "checkmark.circle.fill")
+                        Text(medication.taken ? "Mark as Not Taken" : "Mark as Taken")
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(medication.taken ? Color.green : Color.blue)
+                    .padding(.vertical, 8)
+                    .background(medication.taken ? Color.red.opacity(0.8) : Color.green)
                     .foregroundColor(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(radius: 3)
+                    .cornerRadius(8)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 20)
             }
-            .padding(.top, 20)
         }
-        .background(Color(.systemBackground))
+    }
+    
+    private var imageSection: some View {
+        Section {
+            if isEditing {
+                if let image = editedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                }
+                
+                HStack {
+                    Button {
+                        sourceType = .photoLibrary
+                        showImagePicker = true
+                    } label: {
+                        Label("Choose Photo", systemImage: "photo")
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        sourceType = .camera
+                        showImagePicker = true
+                    } label: {
+                        Label("Take Photo", systemImage: "camera")
+                    }
+                }
+                
+                if editedImage != nil {
+                    Button(role: .destructive) {
+                        editedImage = nil
+                    } label: {
+                        Label("Remove Photo", systemImage: "trash")
+                    }
+                }
+            } else {
+                if let imageData = medication.imageData,
+                   let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                } else {
+                    Image(systemName: "pills.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.blue)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 150)
+                }
+            }
+        }
+    }
+    
+    private var displayDetailsSection: some View {
+        Section {
+            LabeledContent("Medicine Name", value: medication.name)
+            LabeledContent("Time to Take", value: medication.formattedTime)
+            LabeledContent("Start Date", value: formatDate(medication.startDate))
+            LabeledContent("End Date", value: formatDate(medication.endDate))
+            LabeledContent("Frequency", value: medication.frequency.rawValue)
+            
+            if !medication.instructions.isEmpty {
+                LabeledContent("Instructions", value: medication.instructions)
+            }
+        }
+    }
+    
+    private var editDetailsSection: some View {
+        Section {
+            TextField("Medicine Name", text: $editedName)
+            DatePicker("Time to Take", selection: $editedTime, displayedComponents: .hourAndMinute)
+            DatePicker("Start Date", selection: $editedStartDate, displayedComponents: .date)
+            DatePicker("End Date", selection: $editedEndDate, in: editedStartDate..., displayedComponents: .date)
+            
+            Picker("Frequency", selection: $editedFrequency) {
+                ForEach(Frequency.allCases, id: \.self) { freq in
+                    Text(freq.rawValue).tag(freq)
+                }
+            }
+            
+            TextField("Instructions", text: $editedInstructions, axis: .vertical)
+                .lineLimit(4, reservesSpace: true)
+        }
+    }
+   
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        return formatter.string(from: date)
+    }
+    
+    private func initializeEditValues() {
+        editedName = medication.name
+        editedTime = medication.timeToTake
+        editedStartDate = medication.startDate
+        editedEndDate = medication.endDate
+        editedInstructions = medication.instructions
+        editedFrequency = medication.frequency
+        if let imageData = medication.imageData,
+           let uiImage = UIImage(data: imageData) {
+            editedImage = uiImage
+        }
+    }
+    
+    private func startEditing() {
+        initializeEditValues()
+        withAnimation {
+            isEditing = true
+        }
+    }
+    
+    private func cancelEdit() {
+        withAnimation {
+            isEditing = false
+        }
+    }
+    
+    private func saveChanges() {
+        guard !editedName.isEmpty else {
+            showAlert = true
+            return
+        }
+        
+        Task {
+            await NotificationManager.shared.cancelNotification(for: medication)
+            
+            medication.name = editedName
+            medication.timeToTake = editedTime
+            medication.startDate = editedStartDate
+            medication.endDate = editedEndDate
+            medication.instructions = editedInstructions
+            medication.frequency = editedFrequency
+            medication.imageData = editedImage?.jpegData(compressionQuality: 0.8)
+            
+            await MedicationStorage.shared.saveMedications([medication])
+            
+            if await NotificationManager.shared.requestAuthorization() {
+                await NotificationManager.shared.scheduleNotification(for: medication)
+            }
+        }
+        
+        withAnimation {
+            isEditing = false
+        }
     }
 }
