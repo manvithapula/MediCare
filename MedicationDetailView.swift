@@ -5,78 +5,103 @@ struct MedicationDetailView: View {
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Medication Image
-            if let imageData = medication.imageData, let uiImage = UIImage(data: imageData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, maxHeight: 250)
-                    .clipShape(RoundedRectangle(cornerRadius: 15))
-                    .padding(.horizontal)
-            }
-            
-            // Medication Name
-            Text(medication.name)
-                .font(.title)
-                .bold()
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            
-            // Medication Time
-            HStack(spacing: 10) {
-                Image(systemName: "clock.fill")
-                    .foregroundColor(.blue)
-                Text(medication.formattedTime)
-                    .font(.title3)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.top, 5)
-            
-            // Instructions
-            if !medication.instructions.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Instructions")
-                        .font(.headline)
+        ScrollView {
+            VStack(spacing: 24) {
+                // Medication Image
+                if let imageData = medication.imageData, let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: 280)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .shadow(radius: 5)
+                        .padding(.horizontal)
+                }
+                
+                // Medication Information Card
+                VStack(spacing: 20) {
+                    // Medication Name
+                    Text(medication.name)
+                        .font(.system(size: 28, weight: .bold))
+                        .multilineTextAlignment(.center)
                         .foregroundColor(.primary)
-                    Text(medication.instructions)
-                        .font(.body)
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal)
-            }
-            
-            Button(action: {
-                medication.taken.toggle()
-                
-                Task {
-                    // Save the updated medication state
-                    await MedicationStorage.shared.saveMedications([medication])
+                        .padding(.top, 5)
                     
-                    // If medication was just marked as taken, save to history
-                    if medication.taken {
-                        await MedicationStorage.shared.saveMedicationHistory(medication, takenDate: Date())
+                    // Time Section
+                    VStack(spacing: 8) {
+                        Text("Time to Take")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 12) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.blue)
+                            Text(medication.formattedTime)
+                                .font(.system(size: 24, weight: .medium))
+                                .foregroundColor(.primary)
+                        }
                     }
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(15)
+                }
+                .padding(.horizontal)
+                
+                // Instructions Section
+                if !medication.instructions.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Instructions")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.primary)
+                        
+                        Text(medication.instructions)
+                            .font(.system(size: 18))
+                            .lineSpacing(4)
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(15)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
                 }
                 
-                dismiss()
-            }) {
-                HStack {
-                    Image(systemName: medication.taken ? "checkmark.circle.fill" : "plus.circle.fill")
-                        .foregroundColor(.white)
-                    Text(medication.taken ? "Marked as Taken" : "Mark as Taken")
-                        .bold()
+                Spacer(minLength: 30)
+                
+                // Action Button
+                Button(action: {
+                    medication.taken.toggle()
+                    
+                    Task {
+                        await MedicationStorage.shared.saveMedications([medication])
+                        
+                        if medication.taken {
+                            await MedicationStorage.shared.saveMedicationHistory(medication, takenDate: Date())
+                        }
+                    }
+                    
+                    dismiss()
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: medication.taken ? "checkmark.circle.fill" : "plus.circle.fill")
+                            .font(.system(size: 24))
+                        Text(medication.taken ? "Marked as Taken" : "Mark as Taken")
+                            .font(.system(size: 20, weight: .bold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(medication.taken ? Color.green : Color.blue)
+                    .foregroundColor(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(radius: 3)
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(medication.taken ? Color.green : Color.blue)
-                .foregroundColor(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+                .padding(.bottom, 20)
             }
+            .padding(.top, 20)
         }
+        .background(Color(.systemBackground))
     }
 }
-
