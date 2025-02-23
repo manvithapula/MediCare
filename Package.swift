@@ -8,19 +8,19 @@ import PackageDescription
 import AppleProductTypes
 
 let package = Package(
-    name: "MyApp",
+    name: "MediCare",
     platforms: [
         .iOS("16.0")
     ],
     products: [
         .iOSApplication(
-            name: "MyApp",
+            name: "MediCare",
             targets: ["AppModule"],
             bundleIdentifier: "manvitha.MyApp",
             displayVersion: "1.0",
             bundleVersion: "1",
-            appIcon: .placeholder(icon: .rocket),
-            accentColor: .presetColor(.red),
+            appIcon: .placeholder(icon: .heart),
+            accentColor: .presetColor(.blue),
             supportedDeviceFamilies: [
                 .pad,
                 .phone

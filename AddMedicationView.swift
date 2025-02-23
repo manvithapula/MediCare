@@ -118,9 +118,11 @@ struct AddMedicationView: View {
             frequency: frequency
         )
         medications.append(medication)
-        MedicationStorage.shared.saveMedications(medications)
 
+        // Ensure save is awaited inside an async Task
         Task {
+            await MedicationStorage.shared.saveMedications(medications)
+
             let granted = await NotificationManager.shared.requestAuthorization()
             if granted {
                 let scheduled = await NotificationManager.shared.scheduleNotification(for: medication)

@@ -22,7 +22,7 @@ struct MedicationDetailView: View {
                 .bold()
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-                
+            
             // Medication Time
             HStack(spacing: 10) {
                 Image(systemName: "clock.fill")
@@ -49,10 +49,19 @@ struct MedicationDetailView: View {
                 .padding(.horizontal)
             }
             
-            // Mark as Taken Button
             Button(action: {
                 medication.taken.toggle()
-                MedicationStorage.shared.saveMedications([medication])
+                
+                Task {
+                    // Save the updated medication state
+                    await MedicationStorage.shared.saveMedications([medication])
+                    
+                    // If medication was just marked as taken, save to history
+                    if medication.taken {
+                        await MedicationStorage.shared.saveMedicationHistory(medication, takenDate: Date())
+                    }
+                }
+                
                 dismiss()
             }) {
                 HStack {
@@ -67,12 +76,7 @@ struct MedicationDetailView: View {
                 .foregroundColor(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .padding(.horizontal)
-            .padding(.top, 10)
-            
-            Spacer()
         }
-        .padding()
-        .presentationDetents([.medium, .large])
     }
 }
+

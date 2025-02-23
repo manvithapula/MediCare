@@ -2,11 +2,19 @@ import SwiftUI
 import AVFoundation
 
 struct ContentView: View {
-    @State private var medications: [Medication] = MedicationStorage.shared.loadMedications()
+    @State private var medications: [Medication] = []
     @State private var showingAddSheet = false
     @State private var medicationToDelete: Medication?
     @State private var showingDeleteAlert = false
     private let speechSynthesizer = AVSpeechSynthesizer()
+    
+    @MainActor
+       func loadMedications() {
+           Task {
+               self.medications = await MedicationStorage.shared.loadMedications()
+           }
+       }
+
     
     private let timePeriods = [
         ("Morning", 5..<12, "sun.rise.fill"),
@@ -15,7 +23,6 @@ struct ContentView: View {
         ("Night", 22..<24, "moon.stars.fill")
     ]
     
-   
     var upcomingMedications: [Medication] {
         let now = Date()
         let calendar = Calendar.current
@@ -24,12 +31,10 @@ struct ContentView: View {
             let medicationDate = calendar.startOfDay(for: medication.startDate)
             let todayDate = calendar.startOfDay(for: now)
 
-           
             if medicationDate > todayDate {
                 return true
             }
 
-          
             if medicationDate == todayDate {
                 return medication.timeToTake > now
             }
@@ -38,7 +43,6 @@ struct ContentView: View {
         }.sorted { $0.timeToTake < $1.timeToTake }
     }
 
- 
     var todayMedications: [Medication] {
         let today = Calendar.current.startOfDay(for: Date())
         return medications.filter { Calendar.current.isDate($0.startDate, inSameDayAs: today) }
@@ -57,7 +61,7 @@ struct ContentView: View {
                             .fontWeight(.bold)
                             .foregroundColor(.blue)) {
                             
-                            ForEach(timePeriods, id: \.0) { period, range, icon in
+                            ForEach(timePeriods, id: \ .0) { period, range, icon in
                                 let periodMeds = medicationsForPeriod(range, in: todayMedications)
                                 if !periodMeds.isEmpty {
                                     Section(header: Label(period, systemImage: icon)
@@ -111,14 +115,12 @@ struct ContentView: View {
         }
     }
 
-    /// **🚀 FIXED Medication Filtering by Time Periods**
     private func medicationsForPeriod(_ range: Range<Int>, in medications: [Medication]) -> [Medication] {
         medications.filter { medication in
             let hour = Calendar.current.component(.hour, from: medication.timeToTake)
             return range.contains(hour) || (range.lowerBound == 22 && hour < 5)
         }.sorted { $0.timeToTake < $1.timeToTake }
     }
-
 
     private func binding(for medication: Medication) -> Binding<Medication> {
         guard let index = medications.firstIndex(where: { $0.id == medication.id }) else {
@@ -128,25 +130,26 @@ struct ContentView: View {
     }
     
     private func speakReminder(for medication: Medication) {
-           let utterance = AVSpeechUtterance(string: "It's time to take \(medication.name).")
-           utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-           speechSynthesizer.speak(utterance)
-       }
-   
-
- 
+        let utterance = AVSpeechUtterance(string: "Reminder! It's time to take \(medication.name).")
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        speechSynthesizer.speak(utterance)
+    }
+    @MainActor
     private func deleteMedication() {
-        if let medicationToDelete = medicationToDelete,
-           let index = medications.firstIndex(where: { $0.id == medicationToDelete.id }) {
-            DispatchQueue.main.async {
-                NotificationManager.shared.cancelNotification(for: medicationToDelete)
-            }
+        guard let medicationToDelete = medicationToDelete,
+              let index = medications.firstIndex(where: { $0.id == medicationToDelete.id }) else {
+            return
+        }
+        
+        Task {
+            await NotificationManager.shared.cancelNotification(for: medicationToDelete)
             withAnimation {
                 medications.remove(at: index)
-                MedicationStorage.shared.saveMedications(medications)
             }
+            await MedicationStorage.shared.saveMedications(medications)
         }
     }
+
 }
 
 struct EmptyStateView: View {
@@ -171,7 +174,6 @@ struct EmptyStateView: View {
         .padding()
     }
 }
-
 
 struct MedicationRow: View {
     @Binding var medication: Medication
@@ -215,23 +217,6 @@ struct MedicationRow: View {
             }
             
             Spacer()
-            
-            Button(action: {
-                withAnimation {
-                    medication.taken.toggle()
-                    MedicationStorage.shared.saveMedications([medication])
-                }
-            }) {
-                Circle()
-                    .fill(medication.taken ? Color.blue : Color.gray.opacity(0.3))
-                    .frame(width: 24, height: 24)
-                    .overlay(
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                            .opacity(medication.taken ? 1 : 0)
-                    )
-            }
         }
         .padding(.vertical, 8)
         .onTapGesture {

@@ -8,6 +8,12 @@ struct Medicare: App {
                 ContentView()
                     .tabItem {
                         Label("Medicines", systemImage: "pills.fill")
+                        
+                    }
+                HistoryView()
+                    .tabItem {
+                        Label("History", systemImage: "calender.outline")
+                        
                     }
                 
             }

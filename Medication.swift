@@ -24,9 +24,22 @@ enum Frequency: String, CaseIterable, Codable {
     case justOnce = "Just Once"
 }
 
-// Medication history
-struct MedicationHistory: Identifiable, Codable {
-    var id = UUID()
-    var date: Date
-    var medications: [Medication]
+// Data Model for History
+struct TakenMedication: Identifiable, Codable {
+    let id: UUID
+    let name: String
+    let timeTaken: Date
+    let imageData: Data?
+    
+    var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: timeTaken)
+    }
+    
+    var formattedTime: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: timeTaken)
+    }
 }
