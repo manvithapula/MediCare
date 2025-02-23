@@ -24,29 +24,29 @@ struct ContentView: View {
     ]
     
     var upcomingMedications: [Medication] {
-        let now = Date()
-        let calendar = Calendar.current
+            let now = Date()
+            let calendar = Calendar.current
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
 
-        return medications.filter { medication in
-            let medicationDate = calendar.startOfDay(for: medication.startDate)
-            let todayDate = calendar.startOfDay(for: now)
-
-            if medicationDate > todayDate {
-                return true
-            }
-
-            if medicationDate == todayDate {
-                return medication.timeToTake > now
-            }
-
-            return false
-        }.sorted { $0.timeToTake < $1.timeToTake }
-    }
+            return medications.filter { medication in
+                let medicationDate = calendar.startOfDay(for: medication.timeToTake)
+                
+                // Only include medications from tomorrow onwards
+                return medicationDate >= tomorrow
+            }.sorted { $0.timeToTake < $1.timeToTake }
+        }
 
     var todayMedications: [Medication] {
-        let today = Calendar.current.startOfDay(for: Date())
-        return medications.filter { Calendar.current.isDate($0.startDate, inSameDayAs: today) }
-    }
+           let now = Date()
+           let calendar = Calendar.current
+           let today = calendar.startOfDay(for: now)
+           
+           return medications.filter { medication in
+               // Check if the medication is scheduled for today
+               let medicationDate = calendar.startOfDay(for: medication.timeToTake)
+               return medicationDate == today
+           }.sorted { $0.timeToTake < $1.timeToTake }
+       }
 
     var body: some View {
         NavigationStack {
@@ -59,7 +59,7 @@ struct ContentView: View {
                         Section(header: Text("Today")
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundColor(.blue)) {
+                            .foregroundColor(.black)) {
                             
                             ForEach(timePeriods, id: \ .0) { period, range, icon in
                                 let periodMeds = medicationsForPeriod(range, in: todayMedications)
@@ -79,7 +79,7 @@ struct ContentView: View {
                         Section(header: Text("Upcoming")
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundColor(.blue)) {
+                            .foregroundColor(.black)) {
                             
                             ForEach(upcomingMedications) { medication in
                                 MedicationRow(medication: binding(for: medication))
@@ -198,7 +198,7 @@ struct MedicationRow: View {
                 Text(medication.name)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(medication.taken ? .secondary : .primary)
                 
                 HStack {
                     Image(systemName: "clock.fill")
@@ -217,6 +217,14 @@ struct MedicationRow: View {
             }
             
             Spacer()
+            
+            // Completion indicator
+            if medication.taken {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.system(size: 24))
+                    .transition(.scale.combined(with: .opacity))
+            }
         }
         .padding(.vertical, 8)
         .onTapGesture {
@@ -227,4 +235,3 @@ struct MedicationRow: View {
         }
     }
 }
-

@@ -7,18 +7,15 @@ struct Medicare: App {
             TabView {
                 ContentView()
                     .tabItem {
-                        Label("Medicines", systemImage: "pills.fill")
-                        
-                    }
-                HistoryView()
-                    .tabItem {
-                        Label("History", systemImage: "calender.outline")
-                        
+                        Label("Medications", systemImage: "pills")
                     }
                 
+                HistoryView()
+                    .tabItem {
+                        Label("History", systemImage: "clock.badge.checkmark")
+                    }
             }
+            .tint(.blue) 
         }
     }
-    
 }
-
