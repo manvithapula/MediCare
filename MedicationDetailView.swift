@@ -5,7 +5,7 @@ struct MedicationDetailView: View {
     @Environment(\.dismiss) var dismiss
     @State private var isEditing = false
     
-    // Edit mode state
+    //edit details
     @State private var editedName = ""
     @State private var editedTime = Date()
     @State private var editedStartDate = Date()
@@ -13,7 +13,6 @@ struct MedicationDetailView: View {
     @State private var editedInstructions = ""
     @State private var editedFrequency: Frequency = .justOnce
     @State private var editedImage: UIImage?
-    
     @State private var showImagePicker = false
     @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
     @State private var showAlert = false
@@ -61,8 +60,6 @@ struct MedicationDetailView: View {
             }
         }
     }
-    
-
     private var statusSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
@@ -76,7 +73,6 @@ struct MedicationDetailView: View {
                             .foregroundColor(.green)
                     }
                 }
-                
                 Button {
                     Task {
                         medication.taken.toggle()
@@ -99,7 +95,6 @@ struct MedicationDetailView: View {
             }
         }
     }
-    
     private var imageSection: some View {
         Section {
             if isEditing {
@@ -213,7 +208,6 @@ struct MedicationDetailView: View {
             isEditing = true
         }
     }
-    
     private func cancelEdit() {
         withAnimation {
             isEditing = false
@@ -225,10 +219,8 @@ struct MedicationDetailView: View {
             showAlert = true
             return
         }
-        
         Task {
-            await NotificationManager.shared.cancelNotification(for: medication)
-            
+            NotificationManager.shared.cancelNotification(for: medication)
             medication.name = editedName
             medication.timeToTake = editedTime
             medication.startDate = editedStartDate
@@ -236,14 +228,11 @@ struct MedicationDetailView: View {
             medication.instructions = editedInstructions
             medication.frequency = editedFrequency
             medication.imageData = editedImage?.jpegData(compressionQuality: 0.8)
-            
             await MedicationStorage.shared.saveMedications([medication])
-            
             if await NotificationManager.shared.requestAuthorization() {
                 await NotificationManager.shared.scheduleNotification(for: medication)
             }
         }
-        
         withAnimation {
             isEditing = false
         }

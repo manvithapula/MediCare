@@ -1,20 +1,10 @@
-//
-//  MedicationStorage.swift
-//  MyApp
-//
-//  Created by admin64 on 21/02/25.
-//
-
 import Foundation
-
+//storing all data
 actor MedicationStorage {
-    static let shared = MedicationStorage() 
-
+    static let shared = MedicationStorage()
     private let medicationKey = "savedMedications"
     private let historyKey = "medicationHistory"
-
-    // MARK: - Save Medications
-    func saveMedications(_ medications: [Medication]) async {
+    func saveMedications(_ medications: [Medication]) async { // saving for medication tab
         do {
             let encoded = try JSONEncoder().encode(medications)
             UserDefaults.standard.set(encoded, forKey: medicationKey)
@@ -22,9 +12,7 @@ actor MedicationStorage {
             print("Failed to save medications: \(error)")
         }
     }
-
-    // MARK: - Load Medications
-    func loadMedications() async -> [Medication] {
+    func loadMedications() async -> [Medication] {   // loading for medication tab
         guard let data = UserDefaults.standard.data(forKey: medicationKey) else { return [] }
         do {
             return try JSONDecoder().decode([Medication].self, from: data)
@@ -34,8 +22,7 @@ actor MedicationStorage {
         }
     }
 
-    // MARK: - Save Medication History
-    func saveMedicationHistory(_ medication: Medication, takenDate: Date) async {
+    func saveMedicationHistory(_ medication: Medication, takenDate: Date) async {  // saving for history tab
         var history = await loadMedicationHistory()
         let takenMedication = TakenMedication(
             id: medication.id,
@@ -52,9 +39,7 @@ actor MedicationStorage {
             print("Failed to save medication history: \(error)")
         }
     }
-
-    // MARK: - Load Medication History
-    func loadMedicationHistory() async -> [TakenMedication] {
+    func loadMedicationHistory() async -> [TakenMedication] {   // loading for history tab
         guard let data = UserDefaults.standard.data(forKey: historyKey) else { return [] }
         do {
             return try JSONDecoder().decode([TakenMedication].self, from: data)

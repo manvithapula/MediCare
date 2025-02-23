@@ -15,28 +15,23 @@ class PDFGenerator {
         
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = pdfMetaData as [String: Any]
-        
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight), format: format)
-        
         let data = renderer.pdfData { context in
             context.beginPage()
-            
             let dateFormatter = DateFormatter()
             dateFormatter.dateStyle = .long
             
-            // Handle date range display
+          
             let startDate = Calendar.current.startOfDay(for: dateRange.lowerBound)
             let endDate = Calendar.current.startOfDay(for: dateRange.upperBound)
-            
-            // Title section
             let title = "Medication History"
             let dateRangeText: String
             
             if Calendar.current.isDate(startDate, inSameDayAs: endDate) {
-                // If it's the same day, just show one date
+           
                 dateRangeText = dateFormatter.string(from: startDate)
             } else {
-                // If different days, show the range
+               
                 dateRangeText = "\(dateFormatter.string(from: startDate)) - \(dateFormatter.string(from: endDate))"
             }
             
@@ -50,8 +45,6 @@ class PDFGenerator {
             
             title.draw(at: CGPoint(x: margin, y: margin), withAttributes: titleAttributes)
             dateRangeText.draw(at: CGPoint(x: margin, y: margin + 30), withAttributes: dateAttributes)
-            
-            // Group medications by date
             let calendar = Calendar.current
             var medicationsByDate: [Date: [TakenMedication]] = [:]
             
@@ -61,8 +54,6 @@ class PDFGenerator {
                     medicationsByDate[date, default: []].append(medication)
                 }
             }
-            
-            // Sort dates
             let sortedDates = medicationsByDate.keys.sorted()
             
             var yPosition: CGFloat = margin + 80
@@ -76,13 +67,12 @@ class PDFGenerator {
                 noDataText.draw(at: CGPoint(x: margin, y: yPosition), withAttributes: attributes)
             } else {
                 for date in sortedDates {
-                    // Start new page if needed
+                  
                     if yPosition > pageHeight - 100 {
                         context.beginPage()
                         yPosition = margin
                     }
                     
-                    // Draw date header
                     let dateString = dateFormatter.string(from: date)
                     let dateHeaderAttributes: [NSAttributedString.Key: Any] = [
                         .font: UIFont.boldSystemFont(ofSize: 18)
@@ -90,16 +80,14 @@ class PDFGenerator {
                     dateString.draw(at: CGPoint(x: margin, y: yPosition), withAttributes: dateHeaderAttributes)
                     yPosition += 30
                     
-                    // Draw medications for this date
                     if let medications = medicationsByDate[date]?.sorted(by: { $0.timeTaken < $1.timeTaken }) {
                         for medication in medications {
-                            // Draw medication name
+                          
                             let nameAttributes: [NSAttributedString.Key: Any] = [
                                 .font: UIFont.boldSystemFont(ofSize: 16)
                             ]
                             medication.name.draw(at: CGPoint(x: margin + 20, y: yPosition), withAttributes: nameAttributes)
                             
-                            // Draw time taken
                             let timeFormatter = DateFormatter()
                             timeFormatter.timeStyle = .short
                             let timeAttributes: [NSAttributedString.Key: Any] = [
@@ -108,8 +96,6 @@ class PDFGenerator {
                             ]
                             let timeString = timeFormatter.string(from: medication.timeTaken)
                             timeString.draw(at: CGPoint(x: margin + 20, y: yPosition + 20), withAttributes: timeAttributes)
-                            
-                            // Add medication image if available
                             if let imageData = medication.imageData,
                                let image = UIImage(data: imageData) {
                                 let imageSize: CGFloat = 40
@@ -120,7 +106,6 @@ class PDFGenerator {
                             
                             yPosition += 50
                             
-                            // Add a separator line
                             let path = UIBezierPath()
                             path.move(to: CGPoint(x: margin, y: yPosition - 10))
                             path.addLine(to: CGPoint(x: pageWidth - margin, y: yPosition - 10))

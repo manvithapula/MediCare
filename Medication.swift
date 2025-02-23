@@ -1,6 +1,7 @@
 
 
 import Foundation
+//main tab
 struct Medication: Identifiable, Codable {
     var id = UUID()
     var name: String
@@ -24,7 +25,7 @@ enum Frequency: String, CaseIterable, Codable {
     case justOnce = "Just Once"
 }
 
-// Data Model for History
+// history tab
 struct TakenMedication: Identifiable, Codable {
     let id: UUID
     let name: String

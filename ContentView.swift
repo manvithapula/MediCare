@@ -14,35 +14,28 @@ struct ContentView: View {
                self.medications = await MedicationStorage.shared.loadMedications()
            }
        }
-
-    
     private let timePeriods = [
         ("Morning", 5..<12, "sun.rise.fill"),
         ("Afternoon", 12..<17, "sun.max.fill"),
         ("Evening", 17..<22, "sun.set.fill"),
         ("Night", 22..<24, "moon.stars.fill")
     ]
-    
+    //future dates
     var upcomingMedications: [Medication] {
             let now = Date()
             let calendar = Calendar.current
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
-
             return medications.filter { medication in
                 let medicationDate = calendar.startOfDay(for: medication.timeToTake)
-                
-                // Only include medications from tomorrow onwards
                 return medicationDate >= tomorrow
             }.sorted { $0.timeToTake < $1.timeToTake }
         }
-
+//today
     var todayMedications: [Medication] {
            let now = Date()
            let calendar = Calendar.current
            let today = calendar.startOfDay(for: now)
-           
            return medications.filter { medication in
-               // Check if the medication is scheduled for today
                let medicationDate = calendar.startOfDay(for: medication.timeToTake)
                return medicationDate == today
            }.sorted { $0.timeToTake < $1.timeToTake }
@@ -142,16 +135,12 @@ struct ContentView: View {
         }
         
         Task {
-            await NotificationManager.shared.cancelNotification(for: medicationToDelete)
-            withAnimation {
-                medications.remove(at: index)
-            }
+            NotificationManager.shared.cancelNotification(for: medicationToDelete)
             await MedicationStorage.shared.saveMedications(medications)
         }
     }
 
 }
-
 struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 20) {
@@ -174,7 +163,6 @@ struct EmptyStateView: View {
         .padding()
     }
 }
-
 struct MedicationRow: View {
     @Binding var medication: Medication
     @State private var showDetail = false
@@ -215,11 +203,8 @@ struct MedicationRow: View {
                         .lineLimit(1)
                 }
             }
-            
             Spacer()
-            
-            // Completion indicator
-            if medication.taken {
+            if medication.taken { //taken tick
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
                     .font(.system(size: 24))

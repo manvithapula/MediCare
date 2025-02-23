@@ -4,19 +4,16 @@ import PhotosUI
 struct AddMedicationView: View {
     @Binding var medications: [Medication]
     @Environment(\.dismiss) var dismiss
-
     @State private var medicineName = ""
     @State private var medicineTime = Date()
     @State private var startDate = Date()
     @State private var endDate = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
-
     @State private var instructions = ""
     @State private var selectedImage: UIImage?
     @State private var showImagePicker = false
     @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
-    @State private var frequency: Frequency = .justOnce // Default: Just Once
-    
-    @State private var showAlert = false // Alert for empty medicine name
+    @State private var frequency: Frequency = .justOnce
+    @State private var showAlert = false
 
     var body: some View {
         NavigationView {
@@ -105,9 +102,7 @@ struct AddMedicationView: View {
             showAlert = true
             return
         }
-
         let imageData = selectedImage?.jpegData(compressionQuality: 0.8)
-
         let medication = Medication(
             name: medicineName,
             timeToTake: medicineTime,
@@ -118,8 +113,6 @@ struct AddMedicationView: View {
             frequency: frequency
         )
         medications.append(medication)
-
-        // Ensure save is awaited inside an async Task
         Task {
             await MedicationStorage.shared.saveMedications(medications)
 
@@ -136,7 +129,7 @@ struct AddMedicationView: View {
     }
 }
 
-// ImagePicker to handle photo selection or capture
+// adding medicine photo
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     var sourceType: UIImagePickerController.SourceType
