@@ -8,37 +8,83 @@ struct ContentView: View {
     @State private var showingDeleteAlert = false
     private let speechSynthesizer = AVSpeechSynthesizer()
     
-    var sortedMedications: [Medication] {
-        medications.sorted {
-            if $0.startDate == $1.startDate {
-                return $0.timeToTake < $1.timeToTake
-            }
-            return $0.startDate < $1.startDate
-        }
-    }
+    private let timePeriods = [
+        ("Morning", 5..<12, "sun.rise.fill"),
+        ("Afternoon", 12..<17, "sun.max.fill"),
+        ("Evening", 17..<22, "sun.set.fill"),
+        ("Night", 22..<24, "moon.stars.fill")
+    ]
     
+   
+    var upcomingMedications: [Medication] {
+        let now = Date()
+        let calendar = Calendar.current
+
+        return medications.filter { medication in
+            let medicationDate = calendar.startOfDay(for: medication.startDate)
+            let todayDate = calendar.startOfDay(for: now)
+
+           
+            if medicationDate > todayDate {
+                return true
+            }
+
+          
+            if medicationDate == todayDate {
+                return medication.timeToTake > now
+            }
+
+            return false
+        }.sorted { $0.timeToTake < $1.timeToTake }
+    }
+
+ 
+    var todayMedications: [Medication] {
+        let today = Calendar.current.startOfDay(for: Date())
+        return medications.filter { Calendar.current.isDate($0.startDate, inSameDayAs: today) }
+    }
+
     var body: some View {
         NavigationStack {
-            VStack {
-                if medications.isEmpty {
+            List {
+                if todayMedications.isEmpty && upcomingMedications.isEmpty {
                     EmptyStateView()
+                        .listRowBackground(Color.clear)
                 } else {
-                    List {
-                        ForEach(sortedMedications.indices, id: \ .self) { index in
-                            MedicationRow(medication: $medications[index])
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        medicationToDelete = medications[index]
-                                        showingDeleteAlert = true
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                    if !todayMedications.isEmpty {
+                        Section(header: Text("Today")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)) {
+                            
+                            ForEach(timePeriods, id: \.0) { period, range, icon in
+                                let periodMeds = medicationsForPeriod(range, in: todayMedications)
+                                if !periodMeds.isEmpty {
+                                    Section(header: Label(period, systemImage: icon)
+                                        .foregroundColor(.blue)) {
+                                        ForEach(periodMeds) { medication in
+                                            MedicationRow(medication: binding(for: medication))
+                                        }
                                     }
                                 }
+                            }
                         }
                     }
-                    .listStyle(.insetGrouped)
+                    
+                    if !upcomingMedications.isEmpty {
+                        Section(header: Text("Upcoming")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)) {
+                            
+                            ForEach(upcomingMedications) { medication in
+                                MedicationRow(medication: binding(for: medication))
+                            }
+                        }
+                    }
                 }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("My Medicines")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -48,47 +94,61 @@ struct ContentView: View {
                     }
                 }
             }
-            .alert("Delete Medicine?", isPresented: $showingDeleteAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Delete", role: .destructive) {
-                    if let medicationToDelete = medicationToDelete,
-                       let index = medications.firstIndex(where: { $0.id == medicationToDelete.id }) {
-                        DispatchQueue.main.async {
-                            NotificationManager.shared.cancelNotification(for: medicationToDelete)
-                        }
-                        withAnimation {
-                            medications.remove(at: index)
-                            MedicationStorage.shared.saveMedications(medications)
-                        }
-                    }
-                }
-            } message: {
-                if let medication = medicationToDelete {
-                    Text("Are you sure you want to delete \(medication.name)?")
-                }
+        }
+        .tint(.blue)
+        .sheet(isPresented: $showingAddSheet) {
+            AddMedicationView(medications: $medications)
+        }
+        .alert("Delete Medicine?", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                deleteMedication()
             }
-            .sheet(isPresented: $showingAddSheet) {
-                AddMedicationView(medications: $medications)
-            }
-            .onAppear {
-                Task {
-                    let granted = await NotificationManager.shared.requestAuthorization()
-                    if granted {
-                        await NotificationManager.shared.rescheduleMissedNotifications(for: medications)
-                    }
-                }
+        } message: {
+            if let medication = medicationToDelete {
+                Text("Are you sure you want to delete \(medication.name)?")
             }
         }
     }
+
+    /// **🚀 FIXED Medication Filtering by Time Periods**
+    private func medicationsForPeriod(_ range: Range<Int>, in medications: [Medication]) -> [Medication] {
+        medications.filter { medication in
+            let hour = Calendar.current.component(.hour, from: medication.timeToTake)
+            return range.contains(hour) || (range.lowerBound == 22 && hour < 5)
+        }.sorted { $0.timeToTake < $1.timeToTake }
+    }
+
+
+    private func binding(for medication: Medication) -> Binding<Medication> {
+        guard let index = medications.firstIndex(where: { $0.id == medication.id }) else {
+            fatalError("Medication not found")
+        }
+        return $medications[index]
+    }
     
     private func speakReminder(for medication: Medication) {
-        let utterance = AVSpeechUtterance(string: "It's time to take \(medication.name).")
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        speechSynthesizer.speak(utterance)
+           let utterance = AVSpeechUtterance(string: "It's time to take \(medication.name).")
+           utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+           speechSynthesizer.speak(utterance)
+       }
+   
+
+ 
+    private func deleteMedication() {
+        if let medicationToDelete = medicationToDelete,
+           let index = medications.firstIndex(where: { $0.id == medicationToDelete.id }) {
+            DispatchQueue.main.async {
+                NotificationManager.shared.cancelNotification(for: medicationToDelete)
+            }
+            withAnimation {
+                medications.remove(at: index)
+                MedicationStorage.shared.saveMedications(medications)
+            }
+        }
     }
 }
 
-// MARK: - Empty State View
 struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 20) {
@@ -108,17 +168,19 @@ struct EmptyStateView: View {
                 .padding(.horizontal)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
 }
 
-// MARK: - Medication Row
+
 struct MedicationRow: View {
     @Binding var medication: Medication
     @State private var showDetail = false
     
     var body: some View {
         HStack(spacing: 15) {
-            if let imageData = medication.imageData, let uiImage = UIImage(data: imageData) {
+            if let imageData = medication.imageData,
+               let uiImage = UIImage(data: imageData) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
@@ -127,29 +189,26 @@ struct MedicationRow: View {
             } else {
                 Image(systemName: "pills.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(.blue.opacity(0.8))
+                    .foregroundColor(.blue)
             }
             
             VStack(alignment: .leading, spacing: 5) {
                 Text(medication.name)
-                    .font(.headline)
+                    .font(.title3)
+                    .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                
-                Text("\(medication.startDate, style: .date) - \(medication.endDate, style: .date)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
                 
                 HStack {
                     Image(systemName: "clock.fill")
                         .foregroundColor(.blue)
                     Text(medication.formattedTime)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.blue)
                 }
                 
                 if !medication.instructions.isEmpty {
                     Text(medication.instructions)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -157,14 +216,22 @@ struct MedicationRow: View {
             
             Spacer()
             
-            Circle()
-                .fill(medication.taken ? Color.green : Color.gray.opacity(0.3))
-                .frame(width: 20, height: 20)
-                .overlay(
-                    Image(systemName: "checkmark")
-                        .foregroundColor(.white)
-                        .opacity(medication.taken ? 1 : 0)
-                )
+            Button(action: {
+                withAnimation {
+                    medication.taken.toggle()
+                    MedicationStorage.shared.saveMedications([medication])
+                }
+            }) {
+                Circle()
+                    .fill(medication.taken ? Color.blue : Color.gray.opacity(0.3))
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                            .opacity(medication.taken ? 1 : 0)
+                    )
+            }
         }
         .padding(.vertical, 8)
         .onTapGesture {

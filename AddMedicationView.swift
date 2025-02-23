@@ -4,31 +4,37 @@ import PhotosUI
 struct AddMedicationView: View {
     @Binding var medications: [Medication]
     @Environment(\.dismiss) var dismiss
-    
+
     @State private var medicineName = ""
     @State private var medicineTime = Date()
     @State private var startDate = Date()
     @State private var endDate = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
-    
+
     @State private var instructions = ""
     @State private var selectedImage: UIImage?
     @State private var showImagePicker = false
     @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
-    @State private var frequency: Frequency = .daily  // Default: Daily
+    @State private var frequency: Frequency = .justOnce // Default: Just Once
+    
+    @State private var showAlert = false // Alert for empty medicine name
 
     var body: some View {
         NavigationView {
             Form {
-                TextField("Medicine Name", text: $medicineName)
-                    .font(.title3)
-
-                Section(header: Text("Medication Schedule")) {
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
+                Section(header: Text("Medicine Details").font(.headline)) {
+                    TextField("Medicine Name", text: $medicineName)
+                        .font(.title2)
+                        .padding()
+                        .cornerRadius(8)
+                }
+                
+                Section(header: Text("Medication Schedule").font(.headline)) {
+                    DatePicker("Start Date", selection: $startDate, in: Date()..., displayedComponents: .date)
                     DatePicker("End Date", selection: $endDate, in: startDate..., displayedComponents: .date)
                     DatePicker("Time to Take", selection: $medicineTime, displayedComponents: .hourAndMinute)
                 }
-                
-                Section(header: Text("Frequency")) {
+
+                Section(header: Text("Frequency").font(.headline)) {
                     Picker("How Often?", selection: $frequency) {
                         ForEach(Frequency.allCases, id: \.self) { freq in
                             Text(freq.rawValue).tag(freq)
@@ -36,20 +42,29 @@ struct AddMedicationView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                
-                Section(header: Text("Instructions")) {
+
+                Section(header: Text("Instructions").font(.headline)) {
                     TextEditor(text: $instructions)
                         .frame(height: 100)
+                        .font(.body)
                 }
-                
-                Section(header: Text("Medicine Image")) {
+
+                Section(header: Text("Medicine Image").font(.headline)) {
                     if let image = selectedImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
+                        VStack {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 150)
+                                .cornerRadius(8)
+                            
+                            Button("Remove Photo") {
+                                selectedImage = nil
+                            }
+                            .foregroundColor(.red)
+                        }
                     }
-                    
+
                     HStack {
                         Button("Choose Photo") {
                             sourceType = .photoLibrary
@@ -62,7 +77,7 @@ struct AddMedicationView: View {
                         }
                     }
                 }
-                
+
                 Button(action: saveMedication) {
                     Text("Save Medicine")
                         .font(.title3)
@@ -71,6 +86,9 @@ struct AddMedicationView: View {
                 .padding()
                 .buttonStyle(.borderedProminent)
                 .listRowInsets(EdgeInsets())
+                .alert(isPresented: $showAlert) {
+                    Alert(title: Text("Error"), message: Text("Medicine name cannot be empty"), dismissButton: .default(Text("OK")))
+                }
             }
             .navigationTitle("Add New Medicine")
             .navigationBarItems(trailing: Button("Cancel") {
@@ -81,8 +99,13 @@ struct AddMedicationView: View {
             }
         }
     }
-    
+
     private func saveMedication() {
+        guard !medicineName.isEmpty else {
+            showAlert = true
+            return
+        }
+
         let imageData = selectedImage?.jpegData(compressionQuality: 0.8)
 
         let medication = Medication(
@@ -96,7 +119,7 @@ struct AddMedicationView: View {
         )
         medications.append(medication)
         MedicationStorage.shared.saveMedications(medications)
-        
+
         Task {
             let granted = await NotificationManager.shared.requestAuthorization()
             if granted {
@@ -106,24 +129,23 @@ struct AddMedicationView: View {
                 }
             }
         }
-        
+
         dismiss()
     }
 }
-
 
 // ImagePicker to handle photo selection or capture
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     var sourceType: UIImagePickerController.SourceType
-    
+
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
         picker.sourceType = sourceType
         return picker
     }
-    
+
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
 
     func makeCoordinator() -> Coordinator {

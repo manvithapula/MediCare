@@ -1,9 +1,3 @@
-//
-//  Medication.swift
-//  MyApp
-//
-//  Created by admin64 on 21/02/25.
-//
 
 
 import Foundation
@@ -12,8 +6,7 @@ struct Medication: Identifiable, Codable {
     var name: String
     var timeToTake: Date
     var taken: Bool = false
-    var instructions: String = ""    //for instructions
-    var lastSevenDays: [Bool] = Array(repeating: false, count: 7)
+    var instructions: String = ""
     var imageData: Data?
     var startDate: Date
     var endDate: Date
@@ -26,6 +19,14 @@ struct Medication: Identifiable, Codable {
 }
 enum Frequency: String, CaseIterable, Codable {
     case daily = "Daily"
-    case alternateDays = "Alternate Days"
+    case alternateDays = "Alternate"
     case weekly = "Weekly"
+    case justOnce = "Just Once"
+}
+
+// Medication history
+struct MedicationHistory: Identifiable, Codable {
+    var id = UUID()
+    var date: Date
+    var medications: [Medication]
 }

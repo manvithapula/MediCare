@@ -1,11 +1,3 @@
-//
-//  MedicationDetailView.swift
-//  MyApp
-//
-//  Created by admin64 on 23/02/25.
-//
-
-
 import SwiftUI
 
 struct MedicationDetailView: View {
@@ -14,48 +6,69 @@ struct MedicationDetailView: View {
     
     var body: some View {
         VStack(spacing: 20) {
+            // Medication Image
             if let imageData = medication.imageData, let uiImage = UIImage(data: imageData) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 200, height: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .frame(maxWidth: .infinity, maxHeight: 250)
+                    .clipShape(RoundedRectangle(cornerRadius: 15))
+                    .padding(.horizontal)
             }
             
+            // Medication Name
             Text(medication.name)
-                .font(.largeTitle)
+                .font(.title)
                 .bold()
-            
-            HStack {
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+                
+            // Medication Time
+            HStack(spacing: 10) {
                 Image(systemName: "clock.fill")
                     .foregroundColor(.blue)
                 Text(medication.formattedTime)
-                    .font(.title2)
+                    .font(.title3)
                     .foregroundColor(.secondary)
             }
+            .padding(.top, 5)
             
+            // Instructions
             if !medication.instructions.isEmpty {
-                Text(medication.instructions)
-                    .font(.body)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Instructions")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text(medication.instructions)
+                        .font(.body)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
             }
             
+            // Mark as Taken Button
             Button(action: {
                 medication.taken.toggle()
-                MedicationStorage.shared.saveMedications([medication]) 
+                MedicationStorage.shared.saveMedications([medication])
                 dismiss()
             }) {
-                Text(medication.taken ? "Marked as Taken" : "Mark as Taken")
-                    .bold()
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(medication.taken ? Color.green : Color.blue)
-                    .foregroundColor(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                HStack {
+                    Image(systemName: medication.taken ? "checkmark.circle.fill" : "plus.circle.fill")
+                        .foregroundColor(.white)
+                    Text(medication.taken ? "Marked as Taken" : "Mark as Taken")
+                        .bold()
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(medication.taken ? Color.green : Color.blue)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal)
+            .padding(.top, 10)
             
             Spacer()
         }
