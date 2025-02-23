@@ -2,7 +2,7 @@
 
 MediCare is medication tracking app designed to help users manage their daily medication intake efficiently. It provides sound notifications, saves medication history, and allows users to export their records for better health monitoring. The app is built with accessibility in mind, featuring icons for different times of the day, large text mode, and medication grouping to ensure ease of use for all age groups.
 
-#Features
+# Features
 
 Medication Reminders: Get timely sound notifications to take your medicines.
 
