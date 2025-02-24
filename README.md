@@ -17,3 +17,14 @@ Export Data: Export medication history for easy sharing with healthcare provider
 Accessibility Options: Large text mode for better readability.
 
 Offline Support: Access history and logs without needing an internet connection.
+
+# Techstack 
+SwiftUI – Provides a clean, intuitive, and scalable UI with large text and simple navigation.
+
+JSON – Enables lightweight, offline data storage, ensuring medication history is always accessible.
+
+UserNotifications – Handles timely medication reminders, improving adherence.
+
+PDFKit – Allows users to export medication history as PDFs for easy sharing with doctors.
+
+AVFoundation – Adds audio cues, enhancing accessibility for visually impaired users.
